@@ -8,19 +8,26 @@ from openpyxl import Workbook, load_workbook
 parser = argparse.ArgumentParser(
     description="Group assignment tool created for TDT4140 at NTNU, authored by Ådne Karstad"
 )
+
 parser.add_argument(
-    "--group_size",
+    '-n', '--number_of_groups',
     type=int,
-    default=8,
-    help="Size of groups",
+    required=False,
+    help='total number of groups that students may be assigned to.'
 )
 parser.add_argument(
-    "--out",
+    '-Gs', "--group_size",
+    type=int,
+    required=False,
+    help="the maximum number of students that may be assigned to a group. Set either --number_of_groups or --group_size",
+)
+parser.add_argument(
+    "-o", '--file_destination',
     type=str,
     default="assigned_groups",
-    help="Filename of output, e.g. '--out result', will output a file result.xlsx",
+    help="Filename of output, e.g. '-o result', will output a file result.xlsx",
 )
-parser.add_argument("-f", type=str, help="Path to file to process")
+parser.add_argument("-f", '--file_source', type=str, help="Path to a file to process")
 args = parser.parse_args()
 
 ATTRIBUTES_MAP = {
@@ -36,6 +43,7 @@ ATTRIBUTES_MAP = {
     "K": "program",
 }
 
+
 ATTRIBUTES_IN_MAP = {
     # "group": -1,
     # "username": -1,
@@ -44,10 +52,10 @@ ATTRIBUTES_IN_MAP = {
     "provided_email": 5,
     "programming_experience": 7,
     "completed_it1901": 6,
-    "reference_group": 11,
+    "reference_group": 10,
     "available_on_compulsory_dates": 8,
-    "granted_permission_for_deliveries": 10,
-    "program": 9,
+    "granted_permission_for_deliveries": 9,
+    "program": 11,
 }
 
 ATTRIBUTES_TO_PRETTY_FORMAT = {
@@ -119,7 +127,6 @@ def sort_students(students):
     student: list of student objects
 
     sorted on attributes:
-        - stud.grant_anonym
         - stud.taken_it1901
         - stud.prog_skill
 
@@ -188,30 +195,50 @@ def calculate_row(group_index, group_size, offset_value=2, student_index=0):
 
 
 def main():
+    """ Main function """
 
-    if not os.path.isfile(args.f):
+    # You cannot both set the number_of_groups and group_size
+    # If you do, the number_of_groups argument trumphs the other.
+    if args.number_of_groups:
+        number_of_groups = args.number_of_groups
+        group_size = -1
+    elif args.group_size:
+        group_size = args.group_size
+        number_of_groups = -1
+    else:
+        raise argparse.ArgumentError(message='You must either provide number_of_groups or group_size.', argument=None)
+
+    if not os.path.isfile(args.file_source):
         raise FileNotFoundError(
-            f"Cannot locate the file that you have provided {args.f}"
+            f"Cannot locate the file that you have provided {args.file_source}"
         )
 
-    loaded_workbook = load_workbook(filename=f"{args.f}")
+    loaded_workbook = load_workbook(filename=f"{args.file_source}")
 
-    group_size = args.group_size
     students = store_students_in_list(workbook=loaded_workbook)
     students = sort_students(students)
+    # Could remove duplicates here
+    # if args.remove_duplicates:
+    #   students = remove_duplicates(students)
+
     number_of_students = len(students)
-    number_of_groups = math.ceil(number_of_students / group_size)
+
+    # You either have to calculate one or the other.
+    if group_size > 0:
+        number_of_groups = math.ceil(number_of_students / group_size)
+    else:
+        group_size = math.ceil(number_of_students / number_of_groups)
 
     new_workbook = Workbook()
     sheet = new_workbook.active
 
     write_column_names(sheet)
-    # write_group_number_headers(sheet=sheet, number_of_groups=number_of_groups)
+
     assign_students_to_groups(
         sheet=sheet, number_of_groups=number_of_groups, group_size=group_size, students=students
     )
 
-    new_workbook.save(filename=f"{args.out}.xlsx")
+    new_workbook.save(filename=f"{args.file_destination}.xlsx")
 
 
 if __name__ == "__main__":
