@@ -28,6 +28,8 @@ parser.add_argument(
     help="Filename of output, e.g. '-o result', will output a file result.xlsx",
 )
 parser.add_argument("-f", '--file_source', type=str, help="Path to a file to process")
+parser.add_argument("--filter", action='store_true', default=False)
+
 args = parser.parse_args()
 
 ATTRIBUTES_MAP = {
@@ -56,6 +58,7 @@ ATTRIBUTES_IN_MAP = {
     "available_on_compulsory_dates": 8,
     "granted_permission_for_deliveries": 9,
     "program": 11,
+    "time": 2
 }
 
 ATTRIBUTES_TO_PRETTY_FORMAT = {
@@ -83,8 +86,19 @@ class Student(object):
         """
 
         self.__dict__.update(kwargs)
+        
         if "email" in kwargs.keys():
             self.username = self.get_username(kwargs["email"])
+        
+
+    def __eq__(self, other):
+        """ Check if the student has the same student email """
+        return self.email == other.email
+
+    def is_newer_than(self, other):
+        """ True if self is new than other """
+        return self.time > other.time
+
 
     @staticmethod
     def get_username(email):
@@ -110,7 +124,16 @@ def store_students_in_list(workbook, students=None):
         for key, value in zip(ATTRIBUTES_IN_MAP.keys(), ATTRIBUTES_IN_MAP.values()):
             student_attr[key] = student[value]
 
-        students.append(Student(**student_attr))
+        student = Student(**student_attr)
+
+        if args.filter and student in students:
+            """ Replace with old instance or ignore new one """
+            other_stud = students[students.index(student)]
+
+            if student.is_newer_than(other_stud):
+                students[students.index(other_stud)] = student
+        else:
+            students.append(student)
 
     return students
 
@@ -145,6 +168,12 @@ def sort_students(students):
 
     return students
 
+
+def check_if_duplicate(student, students):
+    """ Keeps only the newest student with the same email """
+
+    return student in students
+        
 
 def write_column_names(sheet):
     """ Add column name to row 1 """
@@ -217,9 +246,6 @@ def main():
 
     students = store_students_in_list(workbook=loaded_workbook)
     students = sort_students(students)
-    # Could remove duplicates here
-    # if args.remove_duplicates:
-    #   students = remove_duplicates(students)
 
     number_of_students = len(students)
 

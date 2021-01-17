@@ -13,6 +13,7 @@ What we aim to do is to run a questioneer in Microsoft Forms and export the resu
 
 * You have to provide the xlsx file exported from Forms by using the `-f` flag.
 * You may also provide `-O` which stands for *output* and is gives you the option to select an appropriate file name for the result xlsx file. If this flag is not provided result file will default to `result.xlsx`.
+* You may specify the `--filter` flag to just include the newest student answers. Meaning that if a student has answered twice, only his or her newest answer will be included.
 * You have to provide one of these argumenters:
   * `-n` (--number_of_groups): assigns students to one of a given total number of groups.
   * `-Gs` (--group_size): calculates the total number of groups with regards to the number of students and a maximum total group numbers of students per group.
